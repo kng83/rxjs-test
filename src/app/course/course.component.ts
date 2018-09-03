@@ -1,22 +1,11 @@
 import {AfterViewInit, Component, ElementRef, OnInit, ViewChild} from '@angular/core';
 import {ActivatedRoute} from '@angular/router';
 import {Course} from '../model/course';
-import {
-  debounceTime,
-  distinctUntilChanged,
-  startWith,
-  tap,
-  delay,
-  map,
-  concatMap,
-  switchMap,
-  withLatestFrom,
-  concatAll, shareReplay, throttle, throttleTime
-} from 'rxjs/operators';
-import {merge, fromEvent, Observable, concat, interval} from 'rxjs';
+import {debounceTime, distinctUntilChanged, map, startWith, switchMap, tap} from 'rxjs/operators';
+import {forkJoin, fromEvent, Observable} from 'rxjs';
 import {Lesson} from '../model/lesson';
 import {createHttpObservable} from '../common/util';
-import {debug, RxJsLoggingLevel} from '../common/debug';
+import {debug, RxJsLoggingLevel, setRxJsLoggingLevel} from '../common/debug';
 
 
 @Component({
@@ -47,6 +36,21 @@ export class CourseComponent implements OnInit, AfterViewInit {
       .pipe(
         debug(RxJsLoggingLevel.INFO, 'course Value')
       );
+
+    // sprawdzamy operator forkJoin ktory daje nam obeservable
+    // po dostarczeniu wszystkich observable
+    // w forku otrzymujemy tuple na wyjsciu
+    // tuple dostajemy gdy 2 observable sie zakonczyly
+    const lessons$ = this.loadLessons();
+    forkJoin(this.course$, lessons$)
+      .pipe(
+        tap(([course, lessons]) => {
+          console.log(course, lessons);
+        })
+      ).subscribe();
+
+    // zwiekszamy poziom logowania na maoment
+    setRxJsLoggingLevel(RxJsLoggingLevel.DEBUG);
   }
 
   // najpierw damy debounceTime aby zmniejszyc liczbe emisji keyup
@@ -63,16 +67,18 @@ export class CourseComponent implements OnInit, AfterViewInit {
   // throttle bierze wartosci i co jakis interwal zwraca observable
   // ponoc dobre do websocketas
 
+
   ngAfterViewInit() {
 
     this.lessons$ = fromEvent<any>(this.input.nativeElement, 'keyup')
       .pipe(
         map(event => event.target.value),
         startWith(''),
-        debug(RxJsLoggingLevel.INFO, 'search'),
+        debug(RxJsLoggingLevel.TRACE, 'search'),
         debounceTime(400),
         distinctUntilChanged(),
-        switchMap(search => this.loadLessons(search))
+        switchMap(search => this.loadLessons(search)),
+        debug(RxJsLoggingLevel.DEBUG, 'lessons value')
       );
 
     // fromEvent<any>(this.input.nativeElement, 'keyup')

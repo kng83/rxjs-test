@@ -16,7 +16,7 @@ export function createHttpObservable(url: string) {
       .then(response => {
 
         if (response.ok) {
-          return response.json();
+          return response.json().catch(e => console.log(e.message));
         } else {
           observer.error('Request failed with status code:' + response.status);
         }
